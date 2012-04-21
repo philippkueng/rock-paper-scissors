@@ -1,0 +1,16 @@
+body{
+	font-family: sans-serif;
+}
+.status{
+	border: black solid 4px;
+	position: absolute;
+	top: 20px;
+	right: 20px;
+}
+.status ul{
+	list-style: none;
+	padding: 0;
+}
+.status li{
+	padding: 0px 14px 0px 14px;
+}

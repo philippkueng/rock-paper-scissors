@@ -1,0 +1,60 @@
+<head>
+  <title>rock-paper-scissors</title>
+</head>
+
+<body>
+  {{> hello}}
+  {{> status}}
+  {{> games}}
+</body>
+
+<template name="hello">
+  <div class="hello">
+    <h1>{{greeting}}</h1>
+    <input type="button" value="clear localStorage" />
+  </div>
+</template>
+
+<template name="status">
+	<div class="status">
+		<ul>
+			{{#if users_count 1 }}
+				<li>{{users_count}} user online</li>
+			{{else}}
+				<li>{{users_count}} users online</li>
+			{{/if}}
+			{{#if user_id}}
+				<li>User ID: {{user_id}}</li>
+			{{else}}
+				<li>Not existing</li>
+			{{/if}}
+			{{#if connected}}
+				<li><strong>connected to server</strong></li>
+			{{else}}
+				<li><strong>disconnected from server</strong></li>
+			{{/if}}
+			{{#if message}}
+				<hr/>
+				<li>Message: {{message}}</li>
+			{{/if}}
+		</ul>
+	</div>
+</template>
+
+<template name="games">
+	<ul>
+		{{#each games}}
+			<li>{{name}}
+				{{#if user1_id}}
+					{{#if user2_id}}
+						- <strong>full</strong>
+					{{else}}
+						- <input type='button' value='join' />
+					{{/if}}
+				{{else}}
+					- <input type='button' value='create' />
+				{{/if}}
+			</li>
+		{{/each}}
+	</ul>
+</template>
