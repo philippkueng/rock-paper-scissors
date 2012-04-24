@@ -5,7 +5,8 @@
 <body>
   {{> hello}}
   {{> status}}
-  {{> games}}
+  {{> users}}
+  {{> rps_game}}
 </body>
 
 <template name="hello">
@@ -33,12 +34,58 @@
 			{{else}}
 				<li><strong>disconnected from server</strong></li>
 			{{/if}}
-			{{#if message}}
-				<hr/>
-				<li>Message: {{message}}</li>
-			{{/if}}
 		</ul>
 	</div>
+</template>
+
+<template name="users">
+	<ul>
+		{{#each users}}
+			{{>user_item}}
+		{{/each}}
+	</ul>
+</template>
+
+<template name='user_item'>
+	<li>
+		<span class='id'>{{_id}}</span> - 
+		{{#if wins}}
+			<span class='wins'>{{wins}} / {{games_played}}</span>
+		{{else}}
+			{{#if games_played}}
+				<span class='wins'>0 / {{games_played}}</span>
+			{{else}}
+				<span class='wins'>0 / 0</span>
+			{{/if}}
+		{{/if}}
+		{{#if busy}}
+			<span class='busy'>playing</span>
+		{{else}}
+			<input type='button' value='play against' class='play'>
+		{{/if}}
+	</li>
+</template>
+
+<template name="rps_game">
+	{{#if opponent}}
+		<span>Playing against: {{opponent}}</span><br/>
+		<span>Repetition {{repetition}} of 10</span><br/>
+		{{> rps_game_rock}}
+		{{> rps_game_paper}}
+		{{> rps_game_scissors}}
+	{{/if}}
+</template>
+
+<template name="rps_game_rock">
+	<input type='button' value='rock' class='rock'>
+</template>
+
+<template name="rps_game_paper">
+	<input type='button' value='paper' class='paper'>
+</template>
+
+<template name="rps_game_scissors">
+	<input type='button' value='scissors' class='scissors'>
 </template>
 
 <template name="games">

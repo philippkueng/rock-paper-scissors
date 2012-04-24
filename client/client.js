@@ -10,7 +10,6 @@ Template.hello.events = {
 
 // Define a Minimongo collection to match server/server.js
 Users = new Meteor.Collection('users');
-Games = new Meteor.Collection('games');
 
 // Subscribe to 'users' collection on startup.
 Meteor.subscribe('users', function(){
@@ -18,6 +17,7 @@ Meteor.subscribe('users', function(){
 });
 
 // Subscribe to 'games' collection on startup.
+Games = new Meteor.Collection('games');
 Meteor.subscribe('games', function(){
 
 });
@@ -28,31 +28,21 @@ Meteor.subscribe('games', function(){
 if(!amplify.store('user_id')){
   var user = Users.insert({
     name: Meteor.uuid(),
-    last_activity: (new Date()).getTime()
+    last_activity: (new Date()).getTime(),
+    play_against: null,
+    repetition: null
   });
   amplify.store('user_id', user);
   Session.set('user_id', amplify.store('user_id'));
 
-  /* Send a request to the server to be part of a game ----------- */
-
-  Meteor.setTimeout(function(){
-    if(Users.find().count() % 2 === 0){
-      Session.set('message', 'Asking server to join a game...');
-      Meteor.call('assignUserToAGame', Session.get('user_id'), function(err, result){
-        if(result){
-          Session.set('message', "Just got " + result + " back from the server");
-        } else {
-          Session.set('message', "Someone else was faster, better luck next time");
-        }
-      });
-    } else {
-      Session.set('message', 'Still waiting for someone else to join');
-    }
-  }, 2000);
-
 } else {
   Session.set('user_id', amplify.store('user_id'));
-  Session.set('message', null);
+  // var user = Users.findOne({_id: Session.get('user_id')});
+
+  // if(user.play_against){
+  //   Session.set('play_against', user.play_against);
+  //   console.log('user_playagainst: ' + user.play_against);
+  // }
 }
 
 Template.status.users_count = function(){
@@ -67,15 +57,110 @@ Template.status.connected = function(){
   return Meteor.status().connected;
 };
 
-Template.status.message = function(){
-  return Session.get('message');
+
+////////// Users //////////
+
+Template.users.users = function(){
+  var user = Users.findOne({_id: Session.get('user_id')});
+  if(user && user.play_against){
+    return null;
+  } else {
+    return Users.find({
+      _id: {
+        $ne: Session.get('user_id')
+      }
+    });
+  }
+};
+
+Template.user_item.events = {
+  'click input': function(){
+
+    var my_id = Session.get('user_id');
+    var opponent_id = this._id;
+
+    // let the server handle the collision detection etc.
+    var response = Meteor.call('start_game', my_id, opponent_id);
+    console.log('--> game started');
+  }
+};
+
+
+// as long as a game is played this templates are visible.
+Template.rps_game.opponent = function(){
+
+  var user = Users.findOne({_id: Session.get('user_id'), play_against: {$ne: null}});
+  if(user){
+    return user.play_against;
+  } else {
+    return null;
+  }
+};
+
+Template.rps_game.repetition = function(){
+  var user = Users.findOne({_id: Session.get('user_id'), play_against: {$ne: null}});
+
+  if(user.repetition){
+    return user.repetition;
+  } else {
+    Users.update({
+      _id: Session.get('user_id')
+    }, {
+      $set: {
+        repetition: 1
+      }
+    });
+    return 1;
+  }
+};
+
+var increase_repetition = function(weapon){
+
+  // find out wether this user is player1 or player2 -> the smaller one is player1
+  var player1 = false;
+  var user = Users.findOne({
+    _id: Session.get('user_id')
+  });
+
+  if(user){
+
+    if(Session.get('user_id') < user.play_against){
+      player1 = true;
+    }
+
+    var increase = Meteor.call('insert_move', Session.get('user_id'), player1, weapon);
+  } else {
+    console.log('cannot find user');
+  }
+  
+};
+
+Template.rps_game_rock.events = {
+  'click': function(){
+    console.log('rock');
+    increase_repetition('rock');
+  }
+};
+
+Template.rps_game_paper.events = {
+  'click': function(){
+    console.log('paper');
+    increase_repetition('paper');
+  }
+};
+
+Template.rps_game_scissors.events = {
+  'click': function(){
+    console.log('scissors');
+    increase_repetition('scissors');
+  }
 }
 
 ////////// Games //////////
 
-Template.games.games = function(){
-  return Games.find();
-};
+// Template.games.games = function(){
+//   return Games.find();
+// };
 
 // Template.games.events = {};
 
