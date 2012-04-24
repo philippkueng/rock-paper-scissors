@@ -25,17 +25,30 @@ Meteor.publish('games', function(){
 Meteor.methods({
 	insert_move: function(user_id, is_player1, weapon){
 
-		// save move
-		if(is_player1){
+		var game = null;
 
-			// save the data for the current move
-			var game = Games.findOne({
+		// fetch game
+		if(is_player1){
+			game = Games.findOne({
 				player1: user_id,
-				done: {
-					$exists: false
-				}
+				done: {$exists: false}
 			});
-			if(game){
+		} else {
+			game = Games.findOne({
+				player2: user_id,
+				done: {$exists: false}
+			});
+		}
+
+		if(game){
+
+			// check if it's a duplicate entry -> eg. doubleclick instead of single one.
+			if(game.made_last_step === user_id){
+				console.log('duplicate!');
+			}
+
+			if(is_player1){
+				// save current move for player1
 				Games.update({
 					_id: game._id
 				}, {
@@ -44,93 +57,8 @@ Meteor.methods({
 					}
 				});
 
-				// increase step counter until all the players have made a move.
-				if(game.step_counter < 1){
-					Games.update({
-						_id: game._id
-					}, {
-						$inc: {
-							step_counter: 1
-						}
-					});
-
-				} else { // all players moved, go on to the next repetition.
-					if(game.repetition < 10){
-						Games.update({
-							_id: game._id
-						}, {
-							$set: {
-								step_counter: 0,
-								repetition: game.repetition + 1
-							}
-						});
-
-						// increase repetition for both users.
-						// player1
-						Users.update({
-							_id: game.player1
-						}, {
-							$inc: {
-								repetition: 1
-							}
-						});
-
-						// player2
-						Users.update({
-							_id: game.player2
-						}, {
-							$inc: {
-								repetition: 1
-							}
-						});
-					} else {
-						// remove the play_against properties
-						Users.update({
-							_id: game.player1
-						}, {
-							$set: {
-								play_against: null
-							}
-						});
-
-						Users.update({
-							_id: game.player2
-						}, {
-							$set: {
-								play_against: null
-							}
-						});
-
-						// mark the game as done.
-						Games.update({
-							_id: game._id,
-							done: {
-								$exists: false
-							}
-						}, {
-							$set: {
-								done: true
-							}
-						});
-					}
-				}
 			} else {
-				console.log('game not yet found');
-			}
-			
-
-
-		} else { // player2
-
-			// save the data for the current move
-			var game = Games.findOne({
-				player2: user_id,
-				done: {
-					$exists: false
-				}
-			});
-
-			if(game){
+				// save current move for player2
 				Games.update({
 					_id: game._id
 				}, {
@@ -138,80 +66,94 @@ Meteor.methods({
 						moves_player2: weapon
 					}
 				});
+			}
 
-				// increase step counter until all the players have made a move.
-				if(game.step_counter < 1){
+			// increase to 1 until both players have played.
+			if(game.step_counter < 1){
+				Games.update({
+					_id: game._id
+				}, {
+					$inc: {
+						step_counter: 1
+					}
+				});
+
+				// set the made_last_step to check for duplicate hits
+				Games.update({
+					_id: game._id
+				}, {
+					$set: {
+						made_last_step: user_id
+					}
+				});
+
+			} else { // both players have voted
+
+				if(game.repetition < 10){
+
+					// increase repetition
 					Games.update({
 						_id: game._id
 					}, {
-						$inc: {
-							step_counter: 1
+						$set: {
+							step_counter: 0,
+							made_last_step: null,
+							repetition: game.repetition + 1
 						}
 					});
 
-				} else { // all players moved, go on to the next repetition.
-					if(game.repetition < 10){
-						Games.update({
-							_id: game._id
-						}, {
-							$set: {
-								step_counter: 0,
-								repetition: game.repetition + 1
-							}
-						});
+					// increase repetition for player1
+					Users.update({
+						_id: game.player1
+					}, {
+						$inc: {
+							repetition: 1
+						}
+					});
 
-						// increase repetition for both users.
-						// player1
-						Users.update({
-							_id: game.player1
-						}, {
-							$inc: {
-								repetition: 1
-							}
-						});
+					// increase repetition for player2
+					Users.update({
+						_id: game.player2
+					}, {
+						$inc: {
+							repetition: 1
+						}
+					});
 
-						// player2
-						Users.update({
-							_id: game.player2
-						}, {
-							$inc: {
-								repetition: 1
-							}
-						});
-					} else {
-						// remove the play_against properties
-						Users.update({
-							_id: game.player1
-						}, {
-							$set: {
-								play_against: null
-							}
-						});
 
-						Users.update({
-							_id: game.player2
-						}, {
-							$set: {
-								play_against: null
-							}
-						});
+				} else { // game is finished and we need to wrap up.
 
-						// mark the game as done.
-						Games.update({
-							_id: game._id,
-							done: {
-								$exists: false
-							}
-						}, {
-							$set: {
-								done: true
-							}
-						});
-					}
+					// mark the game as done
+					Games.update({
+						_id: game._id
+					}, {
+						$set: {
+							done: true
+						}
+					});
+
+					// remove the play_against property for player1
+					Users.update({
+						_id: game.player1
+					}, {
+						$set: {
+							play_against: null
+						}
+					});
+
+					// remove the play_against property for player2
+					Users.update({
+						_id: game.player2
+					}, {
+						$set: {
+							play_against: null
+						}
+					});
 				}
-			} else {
-				console.log('game not yet found');
 			}
+
+		} else { // shouldn't happen! really!
+			console.log('game not yet found');
 		}
 
 		return 'foobar';
@@ -235,6 +177,7 @@ Meteor.methods({
 			player2: p2,
 			repetition: 1,
 			step_counter: 0,
+			made_last_step: null,
 			moves_player1: [],
 			moves_player2: []
 		});
